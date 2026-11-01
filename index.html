@@ -15,7 +15,7 @@
 <body>
 
 <h3>WC PoC — Manifest Signing Tests</h3>
-<p class="step">Open this page as a miniapp (developers → Preview by URL, or embed in a cast). Click a button below.</p>
+<p class="step">Click a button below.</p>
 
 <button onclick="testWc1()">Test WC-1: signManifest('farcaster.xyz')</button>
 <button onclick="testWc1b()">Test WC-1b: signManifest('warpcast.com')</button>
@@ -28,14 +28,19 @@
 
 <script type="module">
 const output = document.getElementById('output');
+let _sdk;
+
+async function getSdk() {
+  if (_sdk) return _sdk;
+  const mod = await import('https://esm.sh/@farcaster/miniapp-sdk@0.4.0');
+  _sdk = mod.sdk;
+  // CRITICAL: call ready() so the host dismisses the splash screen and renders us
+  try { _sdk.actions.ready(); } catch (e) { /* some hosts auto-ready */ }
+  return _sdk;
+}
 
 function show(label, data) {
   output.textContent = label + '\n\n' + JSON.stringify(data, null, 2);
-}
-
-async function getSdk() {
-  const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk@0.4.0');
-  return sdk;
 }
 
 async function signManifest(targetDomain) {
@@ -45,7 +50,6 @@ async function signManifest(targetDomain) {
     'Then approve.\n';
   try {
     const result = await sdk.actions.signManifest({ domain: targetDomain });
-    // Decode the JFS to show the forged binding
     const dec = (s) => JSON.parse(atob(s.replace(/-/g,'+').replace(/_/g,'/').padEnd(s.length + (4 - s.length % 4) % 4, '=')));
     let decoded = result;
     try {
@@ -70,12 +74,15 @@ window.testWc1c = () => signManifest('google.com');
 window.testContext = async () => {
   const sdk = await getSdk();
   try {
-    const ctx = sdk.context; // or await sdk.getContext() depending on version
+    const ctx = await sdk.context;
     show('CONTEXT:', ctx);
   } catch(e) {
     show('context failed:', String(e));
   }
 };
+
+// Call ready immediately on load too (in case user clicks before getSdk finishes)
+getSdk().catch(e => { output.textContent = 'SDK load failed: ' + String(e); });
 </script>
 </body>
 </html>
