@@ -13,7 +13,7 @@
 </head>
 <body>
 
-<h3>WC PoC — Manifest Signing Tests <small style="color:#888">v3-bootlog</small></h3>
+<h3>WC PoC — Manifest Signing Tests <small style="color:#888">v4-experimental</small></h3>
 <p class="step" id="statusline">HTML parsed. Loading inlined SDK…</p>
 
 <button onclick="testWc1()">Test WC-1: signManifest('farcaster.xyz')</button>
@@ -103,7 +103,7 @@ async function signManifest(targetDomain) {
   output.textContent = 'calling signManifest({domain: ' + targetDomain + '})…\n' +
     'If a dialog appears showing host=YOUR-PAGE but signing-for=' + targetDomain + ', screenshot it. Then approve.\n';
   try {
-    const result = await sdk.actions.signManifest({ domain: targetDomain });
+    const result = await sdk.experimental.signManifest({ domain: targetDomain });
     const dec = (s) => JSON.parse(atob(s.replace(/-/g,'+').replace(/_/g,'/').padEnd(s.length + (4 - s.length % 4) % 4, '=')));
     let decoded = result;
     try {
